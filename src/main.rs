@@ -1,10 +1,27 @@
+use clap::Parser;
 use std::collections::VecDeque;
-use std::ffi::{OsStr, OsString};
 use std::io;
 use std::path::PathBuf;
 
-fn find(query: &str, start: &OsStr) -> io::Result<Vec<PathBuf>> {
-    let start = PathBuf::from(start);
+#[derive(Parser, Debug)]
+struct Cli {
+    ///The glob pattern to check
+    pattern: String,
+
+    ///The path to start searching
+    path: std::path::PathBuf,
+
+    ///Check hidden directories
+    #[arg(short, long, default_value_t = false)]
+    hidden: bool,
+    
+    ///The maximum number of results to report
+    #[arg(short, long, default_value_t = 500)]
+    count: u16,
+}
+
+fn find(query: &str, start: PathBuf) -> io::Result<Vec<PathBuf>> {
+    //let start = PathBuf::from(start); //was OsStr, not sure what the difference is
     let mut dirs = VecDeque::from(vec![start]);
     let mut result = Vec::new();
 
@@ -24,12 +41,10 @@ fn find(query: &str, start: &OsStr) -> io::Result<Vec<PathBuf>> {
     Ok(result)
 }
 
-fn main() -> io::Result<()> {
-    let mut args = std::env::args().skip(1);
-    let query = args.next().unwrap_or(String::new());
-    let start = args.next().map(OsString::from).unwrap_or(OsString::from("."));
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = Cli::parse();
 
-    for path in find(&query, &start)? {
+    for path in find(&args.pattern, args.path)? {
         if let Some(p) = path.to_str() {
             println!("{}", p);
         }
