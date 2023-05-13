@@ -9,7 +9,6 @@ env:
   RELEASE_BIN: find-rs
   RELEASE_DIR: artifacts
   GITHUB_REF: '${{ github.ref }}'
-  WINDOWS_TARGET: x86_64-pc-windows-msvc
   MACOS_TARGET: x86_64-apple-darwin
   LINUX_AMD64_TARGET: x86_64-unknown-linux-musl
   LINUX_ARM64_TARGET: aarch64-unknown-linux-musl
@@ -32,9 +31,6 @@ jobs:
             rust: stable
           - target: x86_64-apple-darwin
             os: macos-latest
-            rust: stable
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
             rust: stable
 
     steps:
@@ -71,10 +67,6 @@ jobs:
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Set RUSTFLAGS (Windows)
-        if: matrix.os == 'windows-latest'
-        run: echo "RUSTFLAGS=-Ctarget-feature=+crt-static" >> $GITHUB_ENV
-
       - name: Create artifact directory
         run: |
           mkdir ${{ env.RELEASE_DIR }}
@@ -85,15 +77,6 @@ jobs:
         run: |
           mv ./target/${{ matrix.target }}/release/${{ env.RELEASE_BIN }} ${{ env.RELEASE_DIR }}/${{ env.RELEASE_BIN }}-${{ steps.get_version.outputs.VERSION }}-${{ matrix.target }}/${{ env.RELEASE_BIN }}
           mv ${{ env.RELEASE_ADDS }} ./${{ env.RELEASE_DIR }}/${{ env.RELEASE_BIN }}-${{ steps.get_version.outputs.VERSION }}-${{ matrix.target }}
-
-      - name: Move binaries (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: bash
-        run: |
-          cp ./target/${{ matrix.target }}/release/${{ env.RELEASE_BIN }}.exe ./${{ env.RELEASE_DIR }}/${{ env.RELEASE_BIN }}-${{ steps.get_version.outputs.VERSION }}-${{ matrix.target }}/${{ env.RELEASE_BIN }}.exe
-          cp ./target/${{ matrix.target }}/release/${{ env.RELEASE_BIN }}.exe find-rs.exe
-          mv ${{ env.RELEASE_ADDS }} ./${{ env.RELEASE_DIR }}/${{ env.RELEASE_BIN }}-${{ steps.get_version.outputs.VERSION }}-${{ matrix.target }}
-          mv find-pack-init.exe ${{ env.RELEASE_DIR }}
 
       - name: Create tarball
         shell: bash
@@ -136,11 +119,6 @@ jobs:
         with:
           name: ${{ env.LINUX_ARM64_TARGET }}
 
-      - name: Download Windows tarball
-        uses: actions/download-artifact@v2
-        with:
-          name: ${{ env.WINDOWS_TARGET }}
-
       - name: Download MacOS tarball
         uses: actions/download-artifact@v2
         with:
@@ -166,26 +144,6 @@ jobs:
           asset_content_type: application/gzip
           asset_name: find-pack-${{ steps.get_version.outputs.VERSION }}-${{ env.LINUX_ARM64_TARGET }}.tar.gz
 
-      - name: Release Windows tarball
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./find-pack-${{ steps.get_version.outputs.VERSION }}-${{ env.WINDOWS_TARGET }}.tar.gz
-          asset_content_type: application/gzip
-          asset_name: find-pack-${{ steps.get_version.outputs.VERSION }}-${{ env.WINDOWS_TARGET }}.tar.gz
-
-      - name: Release Windows init exe
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./find-pack-init.exe
-          asset_content_type: application/vnd.microsoft.portable-executable
-          asset_name: find-pack-init.exe
-
       - name: Release MacOS tarball
         uses: actions/upload-release-asset@v1
         env:
@@ -195,4 +153,3 @@ jobs:
           asset_path: ./find-pack-${{ steps.get_version.outputs.VERSION }}-${{ env.MACOS_TARGET }}.tar.gz
           asset_content_type: application/gzip
           asset_name: find-pack-${{ steps.get_version.outputs.VERSION }}-${{ env.MACOS_TARGET }}.tar.gz
-
